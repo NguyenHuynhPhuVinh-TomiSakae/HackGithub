@@ -5,34 +5,47 @@ import random from "random";
 
 const path = "./data.json";
 
-const markCommit = (x, y) => {
+const markCommit = async (daysAgo) => {
   const date = moment()
-    .subtract(1, "y")
-    .add(1, "d")
-    .add(x, "w")
-    .add(y, "d")
+    .subtract(daysAgo, "days")
     .format();
 
   const data = {
     date: date,
   };
 
-  jsonfile.writeFile(path, data, () => {
-    simpleGit().add([path]).commit(date, { "--date": date }).push();
+  return new Promise((resolve) => {
+    jsonfile.writeFile(path, data, () => {
+      simpleGit().add([path]).commit(date, { "--date": date }, async () => {
+        await simpleGit().push();
+        console.log(`[${moment().format('HH:mm:ss')}] Commit thứ ${commitCount++} đã được push - Ngày: ${date}`);
+        resolve();
+      });
+    });
   });
 };
 
-const makeCommits = (n) => {
-  if (n === 0) return simpleGit().push();
-  const date = moment().format();
+let commitCount = 1;
 
-  const data = {
-    date: date,
-  };
-  console.log(date);
-  jsonfile.writeFile(path, data, () => {
-    simpleGit().add([path]).commit(date, { "--date": date }, makeCommits.bind(this, --n));
-  });
+const makeCommits = async () => {
+  // Tạo commits cho 365 ngày
+  for (let day = 365; day >= 0; day--) {
+    const commitsToday = random.int(1, 10);
+    console.log(`\n[${moment().format('HH:mm:ss')}] Ngày ${365 - day}: Bắt đầu tạo ${commitsToday} commits`);
+
+    for (let i = 0; i < commitsToday; i++) {
+      await markCommit(day);
+      // Tạm dừng 1 giây giữa các commits để tránh quá tải
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    console.log(`[${moment().format('HH:mm:ss')}] ✓ Hoàn thành ${commitsToday} commits cho ngày ${365 - day}`);
+  }
+
+  console.log(`\n[${moment().format('HH:mm:ss')}] 🎉 Đã hoàn thành tất cả commits!`);
 };
 
-makeCommits(1);
+console.log(`[${moment().format('HH:mm:ss')}] Bắt đầu quá trình tạo commits...`);
+makeCommits().catch(error => {
+  console.error(`[${moment().format('HH:mm:ss')}] Lỗi:`, error);
+});
